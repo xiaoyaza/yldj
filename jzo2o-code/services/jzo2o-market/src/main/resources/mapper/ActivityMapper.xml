@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jzo2o.market.mapper.ActivityMapper">
+
+    <select id="queryActivityList" resultType="com.jzo2o.market.model.dto.response.ActivityInfoResDTO">
+        select act.*, (act.total_num - act.stock_num) as receiveNum, IFNULL(count(cwo.activity_id), 0) as writeOffNum
+        from activity act
+        left join coupon_write_off cwo on act.id = cwo.activity_id
+        <where>
+            <if test="status!=null">
+                and act.status=#{status}
+            </if>
+            <if test="type!=null">
+                and act.type=#{type}
+            </if>
+        </where>
+        group by act.id
+    </select>
+    <select id="queryActivityById" resultType="com.jzo2o.market.model.dto.response.ActivityInfoResDTO">
+        select act.*, (act.total_num - act.stock_num) as receiveNum, IFNULL(count(cwo.activity_id), 0) as writeOffNum
+        from activity act
+        left join coupon_write_off cwo on act.id = cwo.activity_id
+        where act.id=#{id}
+        group by act.id
+    </select>
+</mapper>
