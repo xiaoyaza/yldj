@@ -1,8 +1,8 @@
 package com.jzo2o.foundations.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.jzo2o.api.foundations.dto.response.ServeAggregationResDTO;
 import com.jzo2o.common.model.PageResult;
-import com.jzo2o.common.model.dto.PageQueryDTO;
 import com.jzo2o.foundations.model.domain.Serve;
 import com.jzo2o.foundations.model.dto.request.ServePageQueryReqDTO;
 import com.jzo2o.foundations.model.dto.request.ServeUpsertReqDTO;
@@ -76,4 +76,18 @@ public interface IServeService extends IService<Serve> {
      * @return
      */
     Long queryServeCountByServeItemIdAndSaleStatus(Long serveItemId, Integer saleStatus);
+
+    /**
+     * 查询区域服务信息并进行缓存
+     * @param id 对应serve表的主键
+     * @return 区域服务信息
+     */
+    Serve queryServeByIdCache(Long id);
+
+    /**
+     * 查询区域服务信息
+     * @param id 对应serve表主键
+     * @return 区域服务信息
+     */
+    ServeAggregationResDTO findById(Long id);
 }

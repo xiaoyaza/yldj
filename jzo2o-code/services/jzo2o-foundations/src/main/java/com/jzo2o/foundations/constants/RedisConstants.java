@@ -29,6 +29,8 @@ public class RedisConstants {
          */
         public static final String SERVE_TYPE = "JZ_CACHE:SERVE_TYPE";
 
+        public static final String SERVE_LIST = "JZ_CACHE:SERVE_LIST";
+
         /**
          * 服务项
          */

@@ -5,10 +5,11 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.jzo2o.api.foundations.dto.response.ServeAggregationResDTO;
 import com.jzo2o.common.expcetions.CommonException;
 import com.jzo2o.common.expcetions.ForbiddenOperationException;
 import com.jzo2o.common.model.PageResult;
-import com.jzo2o.common.model.dto.PageQueryDTO;
+import com.jzo2o.foundations.constants.RedisConstants;
 import com.jzo2o.foundations.enums.FoundationStatusEnum;
 import com.jzo2o.foundations.mapper.RegionMapper;
 import com.jzo2o.foundations.mapper.ServeItemMapper;
@@ -22,10 +23,13 @@ import com.jzo2o.foundations.model.dto.response.ServeResDTO;
 import com.jzo2o.foundations.service.IServeService;
 import com.jzo2o.mysql.utils.PageHelperUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.awt.*;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -36,6 +40,29 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
     private ServeItemMapper serveItemMapper;
     @Autowired
     private RegionMapper regionMapper;
+
+    /**
+     * 查询服务项详情缓存版
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    @Cacheable(value = RedisConstants.CacheName.SERVE, key = "#id", unless = "#result == null", cacheManager = RedisConstants.CacheManager.ONE_DAY)
+    public Serve queryServeByIdCache(Long id) {
+        return getById(id);
+    }
+
+    /**
+     * 查询区域服务信息
+     *
+     * @param id 对应serve表主键
+     * @return 区域服务信息
+     */
+    @Override
+    public ServeAggregationResDTO findById(Long id) {
+        return getBaseMapper().findById(id);
+    }
 
     /**
      * 分页查询服务列表
@@ -58,6 +85,12 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      */
     @Override
     @Transactional
+    @CacheEvict(value = {
+            RedisConstants.CacheName.SERVE_ICON,
+            RedisConstants.CacheName.SERVE_TYPE,
+            RedisConstants.CacheName.SERVE_LIST,
+            RedisConstants.CacheName.HOT_SERVE
+    }, allEntries = true, beforeInvocation = true)
     public void batchAdd(List<ServeUpsertReqDTO> serveUpsertReqDTOList) {
         for (ServeUpsertReqDTO serveUpsertReqDTO : serveUpsertReqDTOList) {
             // 校验服务项 是否是启用状态，不是启用状态不能新增
@@ -93,6 +126,15 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      * @param price
      */
     @Override
+    @Caching(
+            put = {
+                    @CachePut(value = RedisConstants.CacheName.SERVE, key = "#id", cacheManager = RedisConstants.CacheManager.ONE_DAY)
+            },
+            evict = {
+                    @CacheEvict(value = RedisConstants.CacheName.SERVE_LIST, allEntries = true, beforeInvocation = true),
+                    @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, allEntries = true, beforeInvocation = true)
+            }
+    )
     public Serve update(Long id, BigDecimal price) {
         // 更新服务价格
         boolean update = lambdaUpdate()
@@ -111,6 +153,17 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      * @param id
      */
     @Override
+    @Caching(
+            put = {
+                    @CachePut(value = RedisConstants.CacheName.SERVE, key = "#id", cacheManager = RedisConstants.CacheManager.ONE_DAY)
+            },
+            evict = {
+                    @CacheEvict(value = RedisConstants.CacheName.SERVE_ICON, allEntries = true, beforeInvocation = true),
+                    @CacheEvict(value = RedisConstants.CacheName.SERVE_TYPE, allEntries = true, beforeInvocation = true),
+                    @CacheEvict(value = RedisConstants.CacheName.SERVE_LIST, allEntries = true, beforeInvocation = true),
+                    @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, allEntries = true, beforeInvocation = true)
+            }
+    )
     @Transactional
     public Serve onSale(Long id) {
         // 先获取要上架的id
@@ -176,6 +229,13 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      * @param id
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = RedisConstants.CacheName.SERVE, key = "#id", beforeInvocation = true),
+            @CacheEvict(value = RedisConstants.CacheName.SERVE_ICON, allEntries = true, beforeInvocation = true),
+            @CacheEvict(value = RedisConstants.CacheName.SERVE_TYPE, allEntries = true, beforeInvocation = true),
+            @CacheEvict(value = RedisConstants.CacheName.SERVE_LIST, allEntries = true, beforeInvocation = true),
+            @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, allEntries = true, beforeInvocation = true)
+    })
     public void offsale(Long id) {
         // 服务状态要为非启用才能下架
         Serve serve = baseMapper.selectById(id);
@@ -205,6 +265,7 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      *
      * @param id
      */
+    @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, allEntries = true, beforeInvocation = true)
     @Override
     public void onHot(Long id) {
         boolean update = lambdaUpdate()
@@ -222,6 +283,7 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
      *
      * @param id
      */
+    @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, allEntries = true, beforeInvocation = true)
     @Override
     public void offHot(Long id) {
         boolean update = lambdaUpdate()

@@ -83,6 +83,8 @@ public interface IServeItemService extends IService<ServeItem> {
      */
     ServeItemResDTO queryServeItemAndTypeById(Long id);
 
+    ServeItem queryServeItemByIdCache(Long id);
+
     /**
      * 根据id列表批量查询
      *

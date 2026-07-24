@@ -133,6 +133,7 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
      * @return 区域列表
      */
     @Override
+    @Cacheable(value = RedisConstants.CacheName.JZ_CACHE, key = "'ACTIVE_REGIONS'", cacheManager = RedisConstants.CacheManager.FOREVER)
     public List<RegionSimpleResDTO> queryActiveRegionList() {
         LambdaQueryWrapper<Region> queryWrapper = Wrappers.<Region>lambdaQuery()
                 .eq(Region::getActiveStatus, FoundationStatusEnum.ENABLE.getStatus())
@@ -164,7 +165,7 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
         }
         //如果需要启用区域，需要校验该区域下是否有上架的服务
         Long queryServeCountByRegionIdAndSaleStatus = serveService.queryServeCountByRegionIdAndSaleStatus(id, FoundationStatusEnum.ENABLE.getStatus());
-        if (queryServeCountByRegionIdAndSaleStatus > 0) {
+        if (queryServeCountByRegionIdAndSaleStatus <= 0) {
             throw new ForbiddenOperationException("无法启用该区域，该区域没有启用任何服务");
         }
 
