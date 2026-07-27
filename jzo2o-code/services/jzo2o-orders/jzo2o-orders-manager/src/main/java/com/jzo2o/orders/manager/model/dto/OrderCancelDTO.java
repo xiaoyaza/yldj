@@ -55,6 +55,11 @@ public class OrderCancelDTO {
     private LocalDateTime serveStartTime;
 
     /**
+     * 实际服务完成时间
+     */
+    private LocalDateTime realServeEndTime;
+
+    /**
      * 实际支付金额
      */
     private BigDecimal realPayAmount;

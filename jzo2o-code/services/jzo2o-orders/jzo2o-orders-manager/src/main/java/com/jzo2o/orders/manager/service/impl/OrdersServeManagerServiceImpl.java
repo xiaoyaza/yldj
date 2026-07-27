@@ -6,12 +6,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jzo2o.api.orders.dto.response.InstitutionStaffServeCountResDTO;
 import com.jzo2o.common.utils.CollUtils;
 import com.jzo2o.orders.base.mapper.OrdersServeMapper;
+import com.jzo2o.orders.base.enums.ServeStatusEnum;
 import com.jzo2o.orders.base.model.domain.OrdersServe;
 import com.jzo2o.orders.manager.service.IOrdersServeManagerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * <p>
@@ -42,6 +44,16 @@ public class OrdersServeManagerServiceImpl extends ServiceImpl<OrdersServeMapper
                 .last(" limit 1")
                 .list();
         return CollUtils.getFirst(list);
+    }
+
+    @Override
+    public void cancelByUserAndOperation(Long ordersId) {
+        lambdaUpdate()
+                .eq(OrdersServe::getOrdersId, ordersId)
+                .ne(OrdersServe::getServeStatus, ServeStatusEnum.CANCLE.getStatus())
+                .set(OrdersServe::getServeStatus, ServeStatusEnum.CANCLE.getStatus())
+                .set(OrdersServe::getCancelTime, LocalDateTime.now())
+                .update();
     }
 
 

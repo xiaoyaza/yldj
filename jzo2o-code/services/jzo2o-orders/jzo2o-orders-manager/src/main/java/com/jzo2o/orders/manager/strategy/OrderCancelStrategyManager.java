@@ -3,11 +3,11 @@ package com.jzo2o.orders.manager.strategy;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.jzo2o.common.expcetions.ForbiddenOperationException;
+import com.jzo2o.common.expcetions.CommonException;
 import com.jzo2o.orders.base.enums.OrderStatusEnum;
 import com.jzo2o.orders.base.model.domain.Orders;
 import com.jzo2o.orders.manager.service.IOrdersManagerService;
 import com.jzo2o.orders.manager.model.dto.OrderCancelDTO;
-import com.jzo2o.orders.manager.strategy.OrderCancelStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -43,7 +43,11 @@ public class OrderCancelStrategyManager {
      * @return 策略实现类
      */
     public OrderCancelStrategy getStrategy(Integer userType, Integer orderStatus) {
-        String key = userType + ":" + OrderStatusEnum.codeOf(orderStatus).toString();
+        OrderStatusEnum orderStatusEnum = OrderStatusEnum.codeOf(orderStatus);
+        if (ObjectUtil.isNull(userType) || ObjectUtil.isNull(orderStatusEnum)) {
+            return null;
+        }
+        String key = userType + ":" + orderStatusEnum.name();
         return strategyMap.get(key);
     }
 
@@ -54,6 +58,9 @@ public class OrderCancelStrategyManager {
      */
     public void cancel(OrderCancelDTO orderCancelDTO) {
         Orders orders = ordersManagerService.queryById(orderCancelDTO.getId());
+        if (ObjectUtil.isNull(orders)) {
+            throw new CommonException("订单不存在");
+        }
         OrderCancelStrategy strategy = getStrategy(orderCancelDTO.getCurrentUserType(), orders.getOrdersStatus());
         if (ObjectUtil.isEmpty(strategy)) {
             throw new ForbiddenOperationException("不被许可的操作");
@@ -61,6 +68,7 @@ public class OrderCancelStrategyManager {
 
         orderCancelDTO.setUserId(orders.getUserId());
         orderCancelDTO.setServeStartTime(orders.getServeStartTime());
+        orderCancelDTO.setRealServeEndTime(orders.getRealServeEndTime());
         orderCancelDTO.setCityCode(orders.getCityCode());
         orderCancelDTO.setRealPayAmount(orders.getRealPayAmount());
         orderCancelDTO.setTradingOrderNo(orders.getTradingOrderNo());

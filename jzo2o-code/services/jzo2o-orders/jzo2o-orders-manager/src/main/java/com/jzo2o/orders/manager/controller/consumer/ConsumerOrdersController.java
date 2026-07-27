@@ -7,7 +7,9 @@ import com.jzo2o.api.orders.dto.response.OrderSimpleResDTO;
 import com.jzo2o.common.model.CurrentUserInfo;
 import com.jzo2o.common.utils.UserContext;
 import com.jzo2o.orders.manager.model.dto.OrderCancelDTO;
+import com.jzo2o.orders.manager.model.dto.request.OrdersPayReqDTO;
 import com.jzo2o.orders.manager.model.dto.request.PlaceOrderReqDTO;
+import com.jzo2o.orders.manager.model.dto.response.OrdersPayResDTO;
 import com.jzo2o.orders.manager.model.dto.response.PlaceOrderResDTO;
 import com.jzo2o.orders.manager.service.IOrdersCreateService;
 import com.jzo2o.orders.manager.service.IOrdersManagerService;
@@ -36,6 +38,27 @@ public class ConsumerOrdersController {
 
     @Resource
     private ServeApi serveApi;
+
+    @GetMapping("/pay/{id}/result")
+    @ApiOperation("查询订单支付结果")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "订单id", required = true, dataTypeClass = Long.class)
+    })
+    public OrdersPayResDTO payResult(@PathVariable("id") Long id) {
+        // 支付结果
+        OrdersPayResDTO payResult = ordersCreateService.getPayResultFromTradServer(id);
+        return payResult;
+    }
+
+    @PutMapping("/pay/{id}")
+    @ApiOperation("订单支付")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "订单id", required = true, dataTypeClass = Long.class)
+    })
+    public OrdersPayResDTO pay(@PathVariable("id") Long id, @RequestBody OrdersPayReqDTO ordersPayReqDTO) {
+        OrdersPayResDTO pay = ordersCreateService.pay(id, ordersPayReqDTO);
+        return pay;
+    }
 
     @ApiOperation("下单接口")
     @PostMapping("/place")

@@ -2,7 +2,6 @@ package com.jzo2o.orders.manager.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.db.DbRuntimeException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -20,11 +19,9 @@ import com.jzo2o.common.utils.ObjectUtils;
 import com.jzo2o.orders.base.enums.OrderStatusEnum;
 import com.jzo2o.orders.base.mapper.OrdersMapper;
 import com.jzo2o.orders.base.model.domain.Orders;
-import com.jzo2o.orders.base.model.domain.OrdersCanceled;
-import com.jzo2o.orders.base.model.dto.OrderUpdateStatusDTO;
-import com.jzo2o.orders.base.service.impl.OrdersCommonServiceImpl;
 import com.jzo2o.orders.manager.model.dto.OrderCancelDTO;
 import com.jzo2o.orders.manager.service.IOrdersManagerService;
+import com.jzo2o.orders.manager.strategy.OrderCancelStrategyManager;
 import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,17 +50,11 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
     @Resource
     private OrdersManagerServiceImpl owner;
 
-    //注入ordersCanceledService
-    @Resource
-    private OrdersCanceledServiceImpl ordersCanceledService;
-
-
-    //注入ordersCommonService
-    @Resource
-    private OrdersCommonServiceImpl ordersCommonService;
-
     @Resource
     private CouponApi couponApi;
+
+    @Resource
+    private OrderCancelStrategyManager orderCancelStrategyManager;
 
 
     /**
@@ -73,28 +64,27 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
      */
     @Override
     public void cancel(OrderCancelDTO orderCancelDTO) {
-        //根据订单id查询订单
-        Orders orders = queryById(orderCancelDTO.getId());
-        if (ObjectUtil.isNull(orders)) {
-            throw new DbRuntimeException("找不到要取消的订单,订单号：{}",orderCancelDTO.getId());
+        Long id = orderCancelDTO.getId();
+        Orders orders = queryById(id);
+        if (ObjectUtils.isNull(orders)) {
+            throw new CommonException("订单不存在");
         }
-        //订单状态
-        Integer ordersStatus = orders.getOrdersStatus();
-        //根据订单状态执行取消逻辑
-        if(OrderStatusEnum.NO_PAY.getStatus()==ordersStatus){ //订单状态为待支付
-            if (orders.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0){
-
-                owner.cancelWithCoupon(orderCancelDTO);
-            }else{
-                owner.cancelByNoPay(orderCancelDTO);
-            }
-
-        }else if(OrderStatusEnum.DISPATCHING.getStatus()==ordersStatus){ //订单状态为派单中
-            //todo待完善
-        }else{
-            throw new CommonException("当前订单状态不支持取消");
+        if (ObjectUtil.equal(UserType.C_USER, orderCancelDTO.getCurrentUserType())
+                && ObjectUtil.notEqual(orders.getUserId(), orderCancelDTO.getCurrentUserId())) {
+            throw new ForbiddenOperationException("非本人操作");
         }
 
+        //优惠券属于下单用户，不能使用运营人员等取消操作者的id退券
+        orderCancelDTO.setUserId(orders.getUserId());
+        orderCancelDTO.setTradingOrderNo(orders.getTradingOrderNo());
+        orderCancelDTO.setRealPayAmount(orders.getRealPayAmount());
+
+        if (ObjectUtils.isNotNull(orders.getDiscountAmount())
+                && orders.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
+            owner.cancelWithCoupon(orderCancelDTO);
+        } else {
+            owner.cancelWithoutCoupon(orderCancelDTO);
+        }
     }
 
     /**
@@ -150,36 +140,20 @@ public class OrdersManagerServiceImpl extends ServiceImpl<OrdersMapper, Orders> 
     public void cancelWithCoupon(OrderCancelDTO orderCancelDTO) {
         //退回优惠券
         CouponUseBackReqDTO couponUseBackReqDTO = new CouponUseBackReqDTO();
-        couponUseBackReqDTO.setUserId(orderCancelDTO.getCurrentUserId());
+        couponUseBackReqDTO.setUserId(orderCancelDTO.getUserId());
         couponUseBackReqDTO.setOrdersId(orderCancelDTO.getId());
         couponApi.useBack(couponUseBackReqDTO);
-        //取消待支付订单
-        owner.cancelByNoPay(orderCancelDTO);
+        orderCancelStrategyManager.cancel(orderCancelDTO);
     }
 
-    //未支付状态取消订单
+    /**
+     * 未使用优惠券的订单通过本地事务执行取消策略。
+     *
+     * @param orderCancelDTO 取消订单模型
+     */
     @Transactional(rollbackFor = Exception.class)
-    public void cancelByNoPay(OrderCancelDTO orderCancelDTO) {
-        //保存取消订单记录
-        OrdersCanceled ordersCanceled = BeanUtil.toBean(orderCancelDTO, OrdersCanceled.class);
-        ordersCanceled.setCancellerId(orderCancelDTO.getCurrentUserId());
-        ordersCanceled.setCancelerName(orderCancelDTO.getCurrentUserName());
-        ordersCanceled.setCancellerType(orderCancelDTO.getCurrentUserType());
-        ordersCanceled.setCancelTime(LocalDateTime.now());
-        ordersCanceledService.save(ordersCanceled);
-        //更新订单状态为取消订单
-        OrderUpdateStatusDTO orderUpdateStatusDTO = new OrderUpdateStatusDTO();
-        //订单id
-        orderUpdateStatusDTO.setId(orderCancelDTO.getId());
-        //原始订单状态
-        orderUpdateStatusDTO.setOriginStatus(OrderStatusEnum.NO_PAY.getStatus());
-        //目标状态
-        orderUpdateStatusDTO.setTargetStatus(OrderStatusEnum.CANCELED.getStatus());
-        int result = ordersCommonService.updateStatus(orderUpdateStatusDTO);
-        if (result <= 0) {
-            throw new DbRuntimeException("订单取消事件处理失败");
-        }
-
+    public void cancelWithoutCoupon(OrderCancelDTO orderCancelDTO) {
+        orderCancelStrategyManager.cancel(orderCancelDTO);
     }
 
 

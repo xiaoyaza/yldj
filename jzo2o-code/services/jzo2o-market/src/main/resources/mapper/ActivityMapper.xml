@@ -23,4 +23,14 @@
         where act.id=#{id}
         group by act.id
     </select>
+
+    <select id="listForConsumer" resultType="com.jzo2o.market.model.dto.response.SeizeCouponInfoResDTO"
+            parameterType="java.lang.Integer">
+        <!--查寻 抢卷中 和 即将开始的优惠卷-->
+        select
+            act.id, act.name, act.type, act.amount_condition, act.discount_rate, act.discount_amount,
+            act.distribute_start_time, act.distribute_end_time, act.status, act.total_num, act.stock_num
+        from activity act
+        where act.status=#{tabType}
+    </select>
 </mapper>

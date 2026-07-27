@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.jzo2o.market.model.domain.Activity;
 import com.jzo2o.market.model.dto.request.ActivityQueryForPageReqDTO;
 import com.jzo2o.market.model.dto.response.ActivityInfoResDTO;
+import com.jzo2o.market.model.dto.response.SeizeCouponInfoResDTO;
 
 import java.util.List;
 
@@ -30,4 +31,12 @@ public interface ActivityMapper extends BaseMapper<Activity> {
      * @return
      */
     ActivityInfoResDTO queryActivityById(Long id);
+
+    /**
+     * 小程序抢券活动列表
+     * tabType: 1 抢券中, 2 即将开始
+     * @param tabType
+     * @return
+     */
+    List<SeizeCouponInfoResDTO> listForConsumer(Integer tabType);
 }

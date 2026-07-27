@@ -11,6 +11,7 @@ import com.jzo2o.market.model.domain.Activity;
 import com.jzo2o.market.model.dto.request.ActivityQueryForPageReqDTO;
 import com.jzo2o.market.model.dto.request.ActivitySaveReqDTO;
 import com.jzo2o.market.model.dto.response.ActivityInfoResDTO;
+import com.jzo2o.market.model.dto.response.SeizeCouponInfoResDTO;
 import com.jzo2o.market.service.IActivityService;
 import com.jzo2o.market.service.ICouponService;
 import com.jzo2o.market.service.ICouponWriteOffService;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * <p>
@@ -42,6 +44,20 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
 
     @Resource
     private ICouponWriteOffService couponWriteOffService;
+
+
+    /**
+     * 小程序抢券活动列表
+     * tabType: 1 抢券中, 2 即将开始
+     *
+     * @param tabType
+     * @return
+     */
+    @Override
+    public List<SeizeCouponInfoResDTO> listForConsumer(Integer tabType) {
+        // 查询抢券列表，根据tabType
+        return baseMapper.listForConsumer(tabType);
+    }
 
 
     /**

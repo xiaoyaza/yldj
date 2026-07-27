@@ -6,6 +6,9 @@ import com.jzo2o.market.model.domain.Activity;
 import com.jzo2o.market.model.dto.request.ActivityQueryForPageReqDTO;
 import com.jzo2o.market.model.dto.request.ActivitySaveReqDTO;
 import com.jzo2o.market.model.dto.response.ActivityInfoResDTO;
+import com.jzo2o.market.model.dto.response.SeizeCouponInfoResDTO;
+
+import java.util.List;
 
 /**
  * <p>
@@ -51,4 +54,12 @@ public interface IActivityService extends IService<Activity> {
      * 使用xxl-job定义定时任务，每分钟执行一次。
      */
     void updateActivityStatus();
+
+    /**
+     * 小程序抢券活动列表
+     * tabType: 1 抢券中, 2 即将开始
+     * @param tabType
+     * @return
+     */
+    List<SeizeCouponInfoResDTO> listForConsumer(Integer tabType);
 }

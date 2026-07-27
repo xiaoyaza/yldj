@@ -39,6 +39,13 @@ public interface IOrdersServeManagerService extends IService<OrdersServe> {
     OrdersServe queryById(Long id);
 
     /**
+     * 用户或运营人员取消订单时取消对应服务单。
+     *
+     * @param ordersId 订单id
+     */
+    void cancelByUserAndOperation(Long ordersId);
+
+    /**
      * 根据机构服务人员id查询服务数量
      *
      * @param institutionStaffId 机构服务人员id
